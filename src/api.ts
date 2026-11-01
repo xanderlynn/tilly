@@ -584,6 +584,25 @@ export interface Lane {
   spans: [number, number, number][];
 }
 
+/** One workstream's day on the home page's River; see river.rs. */
+export interface RiverLane {
+  /** The workstream; null for the Quick fixes lane. */
+  key: string | null;
+  title: string;
+  repo: string | null;
+  starred: boolean;
+  done: number;
+  total: number;
+  /** Helper agents that worked on it today. */
+  helpers: number;
+  /** The first unfinished task only a person can do. */
+  humanNext: string | null;
+  sessionIds: string[];
+  /** [start, end, kind]: 0 = waiting on you, else agent work. */
+  spans: [number, number, number][];
+  lastActivity: number;
+}
+
 export interface MetricDef {
   key: string;
   label: string;
@@ -881,6 +900,7 @@ export const api = {
   anomalies: (days: number) => call<Anomaly[]>("get_anomalies", { days }),
   failureClusters: (days: number) => call<FailureCluster[]>("get_failure_clusters", { days }),
   timelines: (since: number) => call<Lane[]>("get_timelines", { since }),
+  river: (since: number) => call<RiverLane[]>("get_river", { since }),
   fit: (days: number) => call<FitCell[]>("get_fit", { days }),
   toolHealth: (days: number) => call<ToolHealth[]>("get_tool_health", { days }),
   patterns: (days: number) => call<Patterns>("get_patterns", { days }),

@@ -116,36 +116,41 @@ export default function Usage({ days, setDays, drill }: { days: number; setDays:
             </ResponsiveContainer>
           </div>
         </Card>
-        <Card title="Cache hit rate per day">
-          <div className="h-52">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={cacheRows} margin={{ left: -6, right: 8, top: 8 }}>
-                <CartesianGrid stroke={chart.grid} vertical={false} />
-                <XAxis dataKey="date" tick={{ fill: chart.axis, fontSize: 12 }} tickFormatter={(d: string) => d.slice(5)} minTickGap={24} />
-                <YAxis domain={[0, 1]} tick={{ fill: chart.axis, fontSize: 12 }} tickFormatter={(v: number) => `${Math.round(v * 100)}%`} />
-                <Tooltip {...chart.tooltip} formatter={(v) => [pct(Number(v)), "Hit rate"]} />
-                <Line isAnimationActive={false} type="monotone" dataKey="hitRate" stroke="var(--color-sky-500)" strokeWidth={2} dot={false} connectNulls />
-              </LineChart>
-            </ResponsiveContainer>
+        <details className="group rounded-xl border border-zinc-800/80 px-4 py-3 xl:col-span-2">
+          <summary className="cursor-pointer text-sm text-zinc-300">Cache and token charts</summary>
+          <div className="mt-3 grid grid-cols-1 gap-4 xl:grid-cols-2">
+            <Card title="Cache hit rate per day">
+              <div className="h-52">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={cacheRows} margin={{ left: -6, right: 8, top: 8 }}>
+                    <CartesianGrid stroke={chart.grid} vertical={false} />
+                    <XAxis dataKey="date" tick={{ fill: chart.axis, fontSize: 12 }} tickFormatter={(d: string) => d.slice(5)} minTickGap={24} />
+                    <YAxis domain={[0, 1]} tick={{ fill: chart.axis, fontSize: 12 }} tickFormatter={(v: number) => `${Math.round(v * 100)}%`} />
+                    <Tooltip {...chart.tooltip} formatter={(v) => [pct(Number(v)), "Hit rate"]} />
+                    <Line isAnimationActive={false} type="monotone" dataKey="hitRate" stroke="var(--color-sky-500)" strokeWidth={2} dot={false} connectNulls />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+              <p className="mt-1 text-xs text-zinc-500">Higher is cheaper. Long pauses let the prompt cache expire.</p>
+            </Card>
+            <Card title="Tokens per day (excluding cache reads)" action={<Legend items={[["Input", chart.axis], ["Cache write", "var(--color-amber-500)"], ["Output", chart.accent]]} />}>
+              <div className="h-52">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={u.daily} margin={{ left: -6, right: 8, top: 8 }}>
+                    <CartesianGrid stroke={chart.grid} vertical={false} />
+                    <XAxis dataKey="date" tick={{ fill: chart.axis, fontSize: 12 }} tickFormatter={(d: string) => d.slice(5)} minTickGap={24} />
+                    <YAxis tick={{ fill: chart.axis, fontSize: 12 }} tickFormatter={(v: number) => compact(v)} />
+                    <Tooltip {...chart.tooltip} cursor={{ fill: chart.grid }} formatter={(v) => compact(Number(v))} />
+                    <Bar isAnimationActive={false} dataKey="input" name="Input" stackId="t" fill={chart.axis} />
+                    <Bar isAnimationActive={false} dataKey="cacheWrite" name="Cache write" stackId="t" fill="var(--color-amber-500)" />
+                    <Bar isAnimationActive={false} dataKey="output" name="Output" stackId="t" fill={chart.accent} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              <p className="mt-1 text-xs text-zinc-500">Cache reads ({compact(u.cacheRead)} in range) are cheap and would dwarf the rest, so they're shown as the hit rate instead.</p>
+            </Card>
           </div>
-          <p className="mt-1 text-xs text-zinc-500">Higher is cheaper. Long pauses let the prompt cache expire.</p>
-        </Card>
-        <Card title="Tokens per day (excluding cache reads)" action={<Legend items={[["Input", chart.axis], ["Cache write", "var(--color-amber-500)"], ["Output", chart.accent]]} />}>
-          <div className="h-52">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={u.daily} margin={{ left: -6, right: 8, top: 8 }}>
-                <CartesianGrid stroke={chart.grid} vertical={false} />
-                <XAxis dataKey="date" tick={{ fill: chart.axis, fontSize: 12 }} tickFormatter={(d: string) => d.slice(5)} minTickGap={24} />
-                <YAxis tick={{ fill: chart.axis, fontSize: 12 }} tickFormatter={(v: number) => compact(v)} />
-                <Tooltip {...chart.tooltip} cursor={{ fill: chart.grid }} formatter={(v) => compact(Number(v))} />
-                <Bar isAnimationActive={false} dataKey="input" name="Input" stackId="t" fill={chart.axis} />
-                <Bar isAnimationActive={false} dataKey="cacheWrite" name="Cache write" stackId="t" fill="var(--color-amber-500)" />
-                <Bar isAnimationActive={false} dataKey="output" name="Output" stackId="t" fill={chart.accent} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-          <p className="mt-1 text-xs text-zinc-500">Cache reads ({compact(u.cacheRead)} in range) are cheap and would dwarf the rest, so they're shown as the hit rate instead.</p>
-        </Card>
+        </details>
       </div>
 
       <Card title="Model comparison" className="mt-4">

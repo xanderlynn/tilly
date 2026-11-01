@@ -4,6 +4,7 @@ import { revealItemInDir } from "@tauri-apps/plugin-opener";
 import { CheckCircle2, Download, FolderOpen, RefreshCw, XCircle } from "lucide-react";
 import { api, useReleases, type IngestReport } from "../api";
 import { AppearanceSettings } from "../components/Appearance";
+import { FeatureSettings, MotionSettings } from "../components/FeatureSettings";
 import { StatusProfiles } from "../components/StatusProfiles";
 import { Updates, hasUpdate } from "../components/Updates";
 import { CURRENT_VERSION } from "../components/WhatsNew";
@@ -38,7 +39,9 @@ export default function Settings() {
     <>
       <PageHeader title="Settings" />
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+        <FeatureSettings />
         <AppearanceSettings />
+        <MotionSettings />
         <StatusProfiles />
         <Card
           title="Sources"

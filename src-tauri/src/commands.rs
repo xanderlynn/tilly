@@ -150,6 +150,15 @@ pub fn get_timelines(state: State<AppState>, since: i64) -> CmdResult<Vec<trends
     with_db(&state, |c| trends::timelines(c, since))
 }
 
+/// Today as one lane per workstream, for the home page's River.
+#[tauri::command(async)]
+pub fn get_river(
+    state: State<AppState>,
+    since: i64,
+) -> CmdResult<Vec<tilly_core::river::RiverLane>> {
+    with_db(&state, |c| tilly_core::river::river(c, since))
+}
+
 #[tauri::command(async)]
 pub fn get_fit(state: State<AppState>, days: i64) -> CmdResult<Vec<trends::FitCell>> {
     with_db(&state, |c| trends::fit(c, days))
@@ -722,6 +731,7 @@ const SETTING_KEYS: &[&str] = &[
     "alerts.profile",
     "updates.autoCheck",
     crate::tracker_sync::SETTING,
+    crate::tracker_sync::FEATURES_KEY,
     "billing.plan",
     tilly_core::retention::DETAIL_DAYS_KEY,
     tilly_core::retention::ARCHIVE_DAYS_KEY,

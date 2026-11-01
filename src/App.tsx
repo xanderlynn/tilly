@@ -2,10 +2,11 @@ import { setSubscription } from "./format";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Bot, ChartColumn, Coins, Download, Gauge, Gift, ListChecks, Search, Settings as SettingsIcon, Sparkles, Sun, Trophy, X } from "lucide-react";
+import { ChartColumn, Coins, Download, Gauge, Gift, ListChecks, Search, Settings as SettingsIcon, Sparkles, Trophy, Waves, Workflow, X } from "lucide-react";
 import { api, useLive, useReleases, type LiveSession, type LiveStatus, type LiveSummary, type SessionFilter } from "./api";
 import { STATUS, isActive, isAwaiting, mostUrgent, waitingNow } from "./status";
-import { cx } from "./components/ui";
+import { Button, Card, cx } from "./components/ui";
+import { FEATURES, FEATURE_KEY, enabledFeatures, featuresValue, type Feature } from "./features";
 import { Logo } from "./components/Logo";
 import { SessionDrawer } from "./components/SessionDrawer";
 import { Preflight } from "./components/Preflight";
@@ -14,10 +15,10 @@ import { CommandPalette } from "./components/CommandPalette";
 import { CURRENT_VERSION, WhatsNew, useWhatsNew } from "./components/WhatsNew";
 import { Updates, hasUpdate } from "./components/Updates";
 import { projectName } from "./format";
-import Today from "./pages/Today";
+import Now from "./pages/Now";
+import Outcomes from "./pages/Outcomes";
 import Experiments from "./pages/Experiments";
 import Execution from "./pages/Execution";
-import Overview from "./pages/Overview";
 import Sessions from "./pages/Sessions";
 import ControlCenter from "./pages/ControlCenter";
 import Teams from "./pages/Teams";
@@ -27,47 +28,50 @@ import Journal from "./pages/Journal";
 import Patterns from "./pages/Patterns";
 import Usage from "./pages/Usage";
 import Playbooks from "./pages/Playbooks";
-import Scorecard from "./pages/Scorecard";
-import Progress from "./pages/Progress";
 import Retro from "./pages/Retro";
 import Settings from "./pages/Settings";
 
 /** A drill-through into Sessions: filters plus a label for the chip. */
 export type Drill = Omit<SessionFilter, "days"> & { label: string };
 
-export type Page = "today" | "experiments" | "execution" | "overview" | "progress" | "control" | "teams" | "workstreams" | "toolkit" | "sessions" | "patterns" | "usage" | "journal" | "playbooks" | "scorecard" | "retro" | "settings";
+export type Page = "now" | "experiments" | "execution" | "outcomes" | "control" | "teams" | "workstreams" | "toolkit" | "sessions" | "patterns" | "usage" | "journal" | "playbooks" | "retro" | "settings";
+
+type Tab = { page: Page; label: string; feature?: Feature };
 
 /**
- * Six areas, each with one or more tabs. Pages keep their ids so links and
- * drill-throughs work unchanged; the sidebar shows the area, the tab bar
- * the page.
+ * Areas, each with one or more tabs. A tab with a `feature` shows only while
+ * that feature is on (Settings › Features); an area with no tabs left is
+ * hidden. The sidebar shows the area, the tab bar the page.
  */
-const GROUPS: { id: string; label: string; icon: typeof Gauge; tabs: { page: Page; label: string }[] }[] = [
-  { id: "agents", label: "Agents", icon: Bot, tabs: [{ page: "control", label: "Control center" }, { page: "workstreams", label: "Workstreams" }, { page: "teams", label: "Teams" }] },
-  { id: "today", label: "Today", icon: Sun, tabs: [{ page: "today", label: "Today" }] },
+const GROUPS: { id: string; label: string; icon: typeof Gauge; tabs: Tab[] }[] = [
+  { id: "now", label: "Now", icon: Waves, tabs: [{ page: "now", label: "Now" }, { page: "control", label: "Live agents" }] },
+  { id: "workstreams", label: "Workstreams", icon: Workflow, tabs: [{ page: "workstreams", label: "Workstreams", feature: "workstreams" }, { page: "teams", label: "Teams", feature: "teams" }] },
   { id: "sessions", label: "Sessions", icon: ListChecks, tabs: [{ page: "sessions", label: "Sessions" }] },
-  { id: "outcomes", label: "Outcomes", icon: Trophy, tabs: [{ page: "overview", label: "Summary" }, { page: "progress", label: "Progress" }, { page: "scorecard", label: "Delivery & reality" }] },
+  { id: "outcomes", label: "Outcomes", icon: Trophy, tabs: [{ page: "outcomes", label: "Outcomes", feature: "outcomes" }] },
+  { id: "usage", label: "Usage", icon: Coins, tabs: [{ page: "usage", label: "Usage", feature: "usage" }] },
   {
     id: "habits",
     label: "Habits",
     icon: ChartColumn,
     tabs: [
-      { page: "patterns", label: "Patterns" },
-      { page: "execution", label: "Execution" },
-      { page: "toolkit", label: "Toolkit" },
-      { page: "journal", label: "Journal" },
-      { page: "playbooks", label: "Playbooks" },
+      { page: "patterns", label: "Patterns", feature: "patterns" },
+      { page: "execution", label: "Execution", feature: "execution" },
+      { page: "toolkit", label: "Toolkit", feature: "toolkit" },
+      { page: "journal", label: "Journal", feature: "journal" },
+      { page: "playbooks", label: "Playbooks", feature: "playbooks" },
     ],
   },
-  { id: "usage", label: "Usage", icon: Coins, tabs: [{ page: "usage", label: "Usage" }] },
-  { id: "improve", label: "Improve", icon: Sparkles, tabs: [{ page: "retro", label: "Weekly retro" }, { page: "experiments", label: "Experiments & goals" }] },
+  { id: "improve", label: "Improve", icon: Sparkles, tabs: [{ page: "retro", label: "Weekly retro", feature: "retro" }, { page: "experiments", label: "Experiments & goals", feature: "experiments" }] },
 ];
 
-const groupOf = (p: Page) => GROUPS.find((g) => g.tabs.some((t) => t.page === p));
+const ALL_TABS = GROUPS.flatMap((g) => g.tabs);
+
+/** Pages from before the home page and the merged Outcomes page. */
+const RENAMED: Record<string, Page> = { live: "now", today: "now", control: "now", overview: "outcomes", progress: "outcomes", scorecard: "outcomes" };
 
 
 /** Queries that show live state and refetch as soon as data changes. */
-const LIVE_QUERIES = new Set(["teams", "session", "workstreams", "workstream"]);
+const LIVE_QUERIES = new Set(["teams", "session", "workstreams", "workstream", "river"]);
 
 function readStored<T>(key: string, fallback: T): T {
   try {
@@ -88,10 +92,10 @@ function store(key: string, value: unknown) {
 
 export default function App() {
   const qc = useQueryClient();
-  // "live" was the control center's id before it replaced the Live page.
+  // The home page replaced Today and the control center as where you land.
   const [page, setPage] = useState<Page>(() => {
-    const p = readStored<string>("page", "control");
-    return (p === "live" ? "control" : p) as Page;
+    const p = readStored<string>("page", "now");
+    return (RENAMED[p] ?? p) as Page;
   });
   const [planning, setPlanning] = useState(false);
   const [palette, setPalette] = useState(false);
@@ -101,7 +105,11 @@ export default function App() {
   // On a subscription, dollar amounts are API-equivalent, not what you pay.
   setSubscription(settings.data?.values["billing.plan"] === "subscription");
   const [updatesOpen, setUpdatesOpen] = useState(false);
-  const group = groupOf(page);
+  const features = enabledFeatures(settings.data?.values);
+  const on = (t: Tab) => !t.feature || features.has(t.feature);
+  const groups = GROUPS.map((g) => ({ ...g, tabs: g.tabs.filter(on) })).filter((g) => g.tabs.length > 0);
+  const group = groups.find((g) => g.tabs.some((t) => t.page === page));
+  const off = ALL_TABS.find((t) => t.page === page && !on(t));
 
   // ⌘K / Ctrl+K opens the command palette from anywhere.
   useEffect(() => {
@@ -178,7 +186,7 @@ export default function App() {
           </div>
         </div>
         <nav className="flex flex-col gap-0.5">
-          {GROUPS.map(({ id, label, icon: Icon, tabs }) => (
+          {groups.map(({ id, label, icon: Icon, tabs }) => (
             <button
               key={id}
               onClick={() => go(tabs[0].page)}
@@ -189,7 +197,7 @@ export default function App() {
             >
               <Icon size={16} aria-hidden />
               <span className="flex-1">{label}</span>
-              {id === "agents" && awaiting.length > 0 && (
+              {id === "now" && awaiting.length > 0 && (
                 <span className={cx("rounded-full px-1.5 text-xs font-semibold", urgent.bg, urgent.text)} aria-label={`${awaiting.length} awaiting you`}>
                   {awaiting.length}
                 </span>
@@ -234,7 +242,7 @@ export default function App() {
           >
             <SettingsIcon size={16} aria-hidden /> Settings
           </button>
-          <div className="px-2 text-xs leading-relaxed text-zinc-500">All data stays on this computer, except a retro you choose to generate.</div>
+          <div className="px-2 text-xs leading-relaxed text-zinc-500">Your data stays on this computer. Only update checks, tracker syncing and a retro you ask for go out.</div>
         </div>
       </aside>
 
@@ -258,10 +266,14 @@ export default function App() {
               ))}
             </div>
           )}
-          {page === "today" && <Today onOpen={setOpenSession} go={go} drill={openSessions} plan={() => setPlanning(true)} />}
+          {off?.feature ? (
+            <SwitchedOff feature={off.feature} />
+          ) : (
+            <>
+          {page === "now" && <Now onOpen={setOpenSession} go={go} drill={openSessions} plan={features.has("journal") ? () => setPlanning(true) : undefined} />}
           {page === "experiments" && <Experiments drill={openSessions} />}
           {page === "execution" && <Execution days={days} setDays={setDays} drill={openSessions} />}
-          {page === "overview" && <Overview days={days} setDays={setDays} onOpen={setOpenSession} go={go} drill={openSessions} />}
+          {page === "outcomes" && <Outcomes days={days} setDays={setDays} onOpen={setOpenSession} go={go} drill={openSessions} />}
           {page === "control" && <ControlCenter onOpen={setOpenSession} />}
           {page === "teams" && <Teams onOpen={setOpenSession} />}
           {page === "workstreams" && <Workstreams onOpen={setOpenSession} />}
@@ -271,10 +283,10 @@ export default function App() {
           {page === "usage" && <Usage days={days} setDays={setDays} drill={openSessions} />}
           {page === "journal" && <Journal days={days} setDays={setDays} onOpen={setOpenSession} />}
           {page === "playbooks" && <Playbooks />}
-          {page === "scorecard" && <Scorecard days={days} setDays={setDays} drill={openSessions} />}
-          {page === "progress" && <Progress />}
           {page === "retro" && <Retro go={go} />}
           {page === "settings" && <Settings />}
+            </>
+          )}
         </div>
       </main>
 
@@ -290,11 +302,37 @@ export default function App() {
           go={go}
           openSession={setOpenSession}
           plan={() => setPlanning(true)}
-          pages={GROUPS.flatMap((g) => g.tabs.map((t) => ({ page: t.page, label: t.label === g.label ? t.label : `${g.label} › ${t.label}` })))}
+          pages={groups.flatMap((g) => g.tabs.map((t) => ({ page: t.page, label: t.label === g.label ? t.label : `${g.label} › ${t.label}` })))}
         />
       )}
       <ReviewPrompt sessions={tracked} onOpen={setOpenSession} />
     </div>
+  );
+}
+
+/** A page whose feature is off: what it is, and a button to turn it on. */
+function SwitchedOff({ feature }: { feature: Feature }) {
+  const qc = useQueryClient();
+  const settings = useQuery({ queryKey: ["settings"], queryFn: api.settings });
+  const f = FEATURES.find((x) => x.id === feature)!;
+  const [busy, setBusy] = useState(false);
+  const enable = async () => {
+    setBusy(true);
+    try {
+      await api.setSetting(FEATURE_KEY, featuresValue([...enabledFeatures(settings.data?.values), feature]));
+      await qc.invalidateQueries({ queryKey: ["settings"] });
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <Card title={`${f.label} is switched off`}>
+      <p className="text-sm text-zinc-300">{f.help}</p>
+      <p className="mt-1 text-sm text-zinc-500">Turn it on here, or choose what you see in Settings › Features.</p>
+      <Button className="mt-3" variant="primary" busy={busy} onClick={enable}>
+        Turn on {f.label}
+      </Button>
+    </Card>
   );
 }
 

@@ -28,6 +28,7 @@ pub mod pricing;
 pub mod progress;
 pub mod redact;
 pub mod retention;
+pub mod river;
 pub mod signals;
 pub mod sources;
 pub mod stats;

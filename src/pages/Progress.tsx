@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { api, type PayoffGroup, type ProgressT } from "../api";
-import { Card, Empty, ErrorNote, Loading, PageHeader } from "../components/ui";
+import { Card, Empty, ErrorNote, Loading, PageHeader, SectionHeader } from "../components/ui";
 import { date, duration, money, pct } from "../format";
 import { chart } from "../theme";
 
@@ -13,9 +13,10 @@ const SOLID = 20;
  * shipped, reply time, waiting) with one headline, and results by sub-agent
  * team size, app and kind of work, with how many sessions each rests on.
  */
-export default function Progress() {
+export default function Progress({ section }: { section?: boolean }) {
   const q = useQuery({ queryKey: ["progress", 365], queryFn: () => api.progress(365) });
-  const header = <PageHeader title="Progress" subtitle="Your last year, month by month, and what pays off. Built from session summaries, so it covers your whole history." />;
+  const subtitle = "Your last year, month by month, and what pays off. Built from session summaries, so it covers your whole history.";
+  const header = section ? <SectionHeader title="Progress" subtitle={subtitle} /> : <PageHeader title="Progress" subtitle={subtitle} />;
   if (q.isLoading) return <>{header}<Loading /></>;
   if (q.error) return <>{header}<ErrorNote error={q.error} /></>;
   const p = q.data!;
