@@ -159,6 +159,9 @@ pub struct Workstream {
     pub tasks: Vec<WsTask>,
     pub updates: Vec<WsUpdate>,
     pub counts: WsCounts,
+    /// Proof, waits, cost and what needs you; filled in for the list only.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub pulse: Option<crate::pulse::Pulse>,
 }
 
 /// Words in a task that make it work for a person, and why. Checked in order;
@@ -523,7 +526,9 @@ pub fn workstreams(conn: &Connection, days: i64) -> Result<Vec<Workstream>> {
 /// (a power user's month is ~300 workstreams). Open one with `workstream`.
 pub fn summaries(conn: &Connection, days: i64) -> Result<Vec<Workstream>> {
     let mut all = workstreams(conn, days)?;
+    let cx = crate::pulse::context(conn)?;
     for w in &mut all {
+        w.pulse = Some(crate::pulse::pulse(w, &cx));
         w.tasks = vec![];
         w.updates.truncate(1);
         w.sessions = vec![];
@@ -679,6 +684,7 @@ fn empty(key: String, created_at: i64) -> Workstream {
         tasks: vec![],
         updates: vec![],
         counts: WsCounts::default(),
+        pulse: None,
     }
 }
 
@@ -1305,6 +1311,7 @@ fn build(key: String, rows: Vec<Row>, stored: &BTreeMap<String, TaskKind>, now: 
         tasks: vec![],
         updates: vec![],
         counts: WsCounts::default(),
+        pulse: None,
     };
     for r in &rows {
         let busy = r.status.group() == Group::Active;

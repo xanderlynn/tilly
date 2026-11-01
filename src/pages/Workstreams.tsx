@@ -25,7 +25,8 @@ import { api, type TaskKind, type Workstream, type WsTask } from "../api";
 import { StatusBadge } from "../components/status";
 import { Button, Card, Empty, ErrorNote, Loading, PageHeader, Segmented, SourceBadge, cx, inputClass, inputBase } from "../components/ui";
 import { ago, compact, duration, money, projectName, roleOf } from "../format";
-import { cardState, importedLabel, initials, progress, value, sortForYou, taskState, trackerName, trackerTasks, tree, type TaskState } from "../workstreams";
+import { WorkstreamsOverview } from "../components/WorkstreamsOverview";
+import { importedLabel, wsGroup, initials, progress, value, sortForYou, taskState, trackerName, trackerTasks, tree, type TaskState } from "../workstreams";
 
 const STATE: Record<TaskState, { icon: LucideIcon; className: string; label: string }> = {
   done: { icon: CircleCheck, className: "text-emerald-400", label: "Done" },
@@ -37,20 +38,6 @@ const STATE: Record<TaskState, { icon: LucideIcon; className: string; label: str
 
 /** Imported workstreams fetch their issue or work item again when opened after this long. */
 const SYNC_AFTER_MS = 15 * 60_000;
-
-/** Days since its last activity within which a workstream counts as active. */
-const ACTIVE_DAYS = 3;
-
-/**
- * The default view: what's in flight. Recent, starred or needing you, and
- * not finished (done or closed ones are archived out of it, still under All).
- */
-function isActiveWs(w: Workstream) {
-  if (w.archived) return false;
-  const state = cardState(w);
-  if (state.label === "Done" || state.label === "Closed") return w.counts.needsYou > 0;
-  return w.starred || w.counts.needsYou > 0 || Date.now() - w.lastActivity < ACTIVE_DAYS * 86_400_000;
-}
 
 /** A change to your workstreams; the list reloads after it. */
 function useWsChange<A>(fn: (arg: A) => Promise<unknown>) {
@@ -67,7 +54,7 @@ const agentLabel = (a: { name: string | null; role: string }) => a.name ?? (a.ro
  */
 export default function Workstreams({ onOpen }: { onOpen: (id: string) => void }) {
   const [days, setDays] = useState(30);
-  const [filter, setFilter] = useState<"active" | "all" | "starred" | "you">("active");
+  const [scope, setScope] = useState<"all" | "mine">("all");
   const [creating, setCreating] = useState(false);
   const [importing, setImporting] = useState(false);
   // The open workstream is remembered, so it stays open across restarts.
@@ -93,33 +80,40 @@ export default function Workstreams({ onOpen }: { onOpen: (id: string) => void }
   const list = useMemo(() => {
     const needle = search.trim().toLowerCase();
     return sortForYou(q.data ?? [])
-      .filter((w) => (filter === "active" ? isActiveWs(w) : filter === "starred" ? w.starred : filter === "you" ? w.counts.needsYou > 0 : true))
+      .filter((w) => scope === "all" || (w.pulse?.mine ?? true))
       .filter((w) => !needle || [w.title, w.repo, w.branch, w.trackerRepo].some((x) => x?.toLowerCase().includes(needle)));
-  }, [q.data, filter, search]);
+  }, [q.data, scope, search]);
   const create = useWsChange(({ title, ids }: { title: string; ids: string[] }) => api.createWorkstream(title, ids));
+  const star = useWsChange((ws: Workstream) => api.starWorkstream(ws, !ws.starred));
 
   if (open && full.data) return <Detail ws={full.data} onBack={() => setOpen(null)} onOpen={onOpen} />;
   if (open && full.isLoading) return <Loading />;
 
-  const needYou = (q.data ?? []).filter((w) => w.counts.needsYou > 0).length;
-  const starred = (q.data ?? []).filter((w) => w.starred).length;
-  const active = (q.data ?? []).filter(isActiveWs).length;
+  const counts = { need: 0, moving: 0, stalled: 0, done: 0 };
+  list.forEach((w) => counts[wsGroup(w)]++);
   return (
     <>
       <PageHeader
         title="Workstreams"
-        subtitle="Larger efforts across sessions: what's done, what's moving, and what's waiting on you."
+        subtitle={
+          list.length ? (
+            <>
+              {list.length} workstreams. {counts.need > 0 && <span className="text-amber-300">{counts.need} need you. </span>}
+              {counts.moving} moving · {counts.stalled} stalled · {counts.done} done
+            </>
+          ) : (
+            "Larger efforts across sessions: what's done, what's moving, and what's waiting on you."
+          )
+        }
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <Segmented
               options={[
-                { value: "active" as const, label: `Active ${active}` },
                 { value: "all" as const, label: "All" },
-                { value: "starred" as const, label: `Starred ${starred}` },
-                { value: "you" as const, label: `Needs you ${needYou}` },
+                { value: "mine" as const, label: "Mine" },
               ]}
-              value={filter}
-              onChange={setFilter}
+              value={scope}
+              onChange={setScope}
             />
             <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search" aria-label="Search workstreams" className={cx(inputBase, "w-40")} />
             <Segmented options={[{ value: 7, label: "7d" }, { value: 30, label: "30d" }, { value: 0, label: "All" }]} value={days} onChange={setDays} />
@@ -166,23 +160,14 @@ export default function Workstreams({ onOpen }: { onOpen: (id: string) => void }
       {q.isLoading ? (
         <Loading />
       ) : list.length === 0 ? (
-        <Empty title={filter === "you" ? "Nothing is waiting on you" : filter === "starred" ? "Nothing starred yet" : "No workstreams yet"}>
-          {filter === "starred"
-            ? "Star a workstream to keep it here, whatever its age."
+        <Empty title={scope === "mine" ? "None of yours here" : "No workstreams yet"}>
+          {scope === "mine"
+            ? "Imported epics count as yours when an item in them is assigned to you."
             : "Work on a feature branch, or let an agent keep a task list (Claude Code's todos and plans, Copilot's todos), and its effort shows up here. Or make your own with New workstream, or import any GitHub issue or Azure DevOps work item."}
         </Empty>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {list.map((w) => (
-            <EffortCard key={w.key} ws={w} onClick={() => setOpen(w.key)} />
-          ))}
-        </div>
+        <WorkstreamsOverview list={list} onOpenWs={setOpen} onOpenSession={onOpen} onStar={(w) => star.mutate(w)} />
       )}
-      <div className="mt-4 flex flex-wrap gap-4 text-xs text-zinc-500">
-        <span className="inline-flex items-center gap-1.5"><span className="h-1.5 w-3 rounded-sm bg-emerald-500" /> Done</span>
-        <span className="inline-flex items-center gap-1.5"><span className="h-1.5 w-3 rounded-sm bg-sky-500" /> In progress</span>
-        <span className="inline-flex items-center gap-1.5"><span className="h-1.5 w-3 rounded-sm bg-amber-400" /> Waiting on you</span>
-      </div>
     </>
   );
 }
@@ -241,74 +226,6 @@ function StarButton({ ws, className }: { ws: Workstream; className?: string }) {
     >
       <Star size={15} fill={on ? "currentColor" : "none"} />
     </button>
-  );
-}
-
-function EffortCard({ ws, onClick }: { ws: Workstream; onClick: () => void }) {
-  const latest = ws.updates[0];
-  const subs = ws.agents.filter((a) => a.role !== "lead").length;
-  const state = cardState(ws);
-  const total = ws.counts.done + ws.counts.inProgress + ws.counts.pending;
-  return (
-    <div className="relative min-w-0">
-      <button
-        onClick={onClick}
-        className={cx(
-          "flex h-full w-full min-w-0 flex-col items-stretch gap-3 rounded-xl border bg-zinc-900/60 p-4 text-left transition-colors hover:border-zinc-700 hover:bg-zinc-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-500",
-          ws.starred ? "border-amber-500/30" : "border-zinc-800",
-        )}
-      >
-        <div className="flex items-start justify-between gap-2 pr-7">
-          <div className="min-w-0">
-            <div className="truncate text-sm font-medium text-zinc-100">{ws.title}</div>
-            <div className="truncate text-xs text-zinc-500">
-              {ws.sourceUrl ? `${importedLabel(ws)}${ws.trackerRepo ? ` · ${ws.trackerRepo}` : ""}` : ws.repo ? projectName(ws.repo) : ws.custom ? "Your workstream" : "No repository"}
-              {!ws.sourceUrl && ws.branch && ` · ${ws.branch}`} · {ws.sessionCount} {ws.sessionCount === 1 ? "session" : "sessions"}
-            </div>
-          </div>
-          <span
-            title={state.hint}
-            className={cx(
-              "shrink-0 rounded-full px-2 py-0.5 text-[11px]",
-              state.tone === "amber" ? "bg-amber-500/15 text-amber-300" : state.tone === "green" ? "bg-emerald-500/15 text-emerald-300" : "bg-zinc-800 text-zinc-400",
-            )}
-          >
-            {state.label}
-          </span>
-        </div>
-        <ProgressBar ws={ws} />
-        {ws.syncError && (
-          <div className="truncate text-xs text-amber-300" title={ws.syncError}>
-            Couldn't sync: {ws.syncError}
-          </div>
-        )}
-        <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-zinc-400">
-          <span>{total ? `${ws.counts.done} of ${total} done` : "No task list"}</span>
-          {ws.sourceUrl && ws.syncedAt && <span>synced {ago(Date.now() - ws.syncedAt)}</span>}
-          <span className="inline-flex items-center gap-1"><Bot size={12} aria-hidden /> {ws.counts.agent} agent</span>
-          <span className="inline-flex items-center gap-1"><User size={12} aria-hidden /> {ws.counts.human} human</span>
-        </div>
-        <div className="flex items-center justify-between gap-2">
-          <Avatars ws={ws} />
-          <span className="text-xs text-zinc-500">{subs ? `Lead + ${subs} sub-agent${subs === 1 ? "" : "s"}` : ws.sessionCount > 1 ? `${ws.sessionCount} leads` : ws.sessionCount ? "Lead" : ""}</span>
-        </div>
-        <div className="border-t border-zinc-800 pt-2 text-sm">
-          {latest ? (
-            <>
-              <div className="text-xs text-zinc-500">
-                {latest.agent === "lead" ? "Lead" : latest.agent} · {latest.at ? ago(Date.now() - latest.at) : "earlier"}
-              </div>
-              <div className="line-clamp-2 text-zinc-300">{latest.text}</div>
-            </>
-          ) : (
-            <div className="text-xs text-zinc-500">
-              {ws.sessionCount === 0 ? "No sessions yet: open it to add some." : `No updates yet. Last active ${ago(Date.now() - ws.lastActivity)}.`}
-            </div>
-          )}
-        </div>
-      </button>
-      <StarButton ws={ws} className="absolute right-3 top-3" />
-    </div>
   );
 }
 
