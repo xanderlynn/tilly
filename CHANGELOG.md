@@ -10,6 +10,9 @@ To add to the next release, write under **Unreleased**; `npm run release -- <ver
 
 ### Added
 
+- **Workstreams, all at once**: every workstream as one row, grouped **Needs you**, **Moving**, **Stalled** (open work quiet for 3+ days) and **Done**. Each row has a same-width bar of its tasks (proven, waiting on you, stuck, in progress, not started) with the task count, how much of its done work is proven (a merged PR, or a tracker item a person closed) and how much is only committed or the agent's word, what needs you with the oldest wait, and how long its agents waited on you this week against last. Click a row for what needs you there, what's stuck and this week's cost.
+- **Act now** across all workstreams: the four things that free the most work, weighted by how long they've waited, with "+N more".
+- **All / Mine** on Workstreams: Mine leaves out imported epics with nothing assigned to you.
 - **Now**, the new home page: one sentence on where things stand, today as a river of your workstreams (agents working, waits on you, gates waiting now, your next step), and **Needs you**: up to five things, most urgent first, then "+N more". **Since you left** comes first after a break.
 - **Focus**: open anything on Needs you for one big card. Enter goes to the agent, L pushes it back half an hour, D says you handled it, arrows move through the rest.
 - **What changed** cards: this week against last, shown only when a number really moved (shipped, wait for your replies, cost per shipped session, success when it's more than chance).

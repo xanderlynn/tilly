@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { Workstream, WsTask } from "./api";
-import { cardState, importedLabel, initials, progress, value, sortForYou, taskState, trackerName, trackerTasks, tree } from "./workstreams";
+import type { Pulse, Workstream, WsTask } from "./api";
+import { actNow, waitTrend, wsGroup, cardState, importedLabel, initials, progress, value, sortForYou, taskState, trackerName, trackerTasks, tree } from "./workstreams";
 
 const task = (over: Partial<WsTask>): WsTask => ({ key: "s:1", sessionId: "s", title: "T", status: "pending", kind: "agent", reason: null, agent: null, blockedBy: [], updatedAt: null, url: null, mine: false, parent: null, depth: 0, sessions: [], ...over });
 const v0 = { activeMs: 0, costUsd: null, costIsEstimate: false, tokens: 0, commits: 0, prs: [] as string[], outcome: null };
@@ -97,5 +97,33 @@ describe("workstreams", () => {
       { ...one, id: "b", activeMs: 30_000, costUsd: null, costIsEstimate: true, commits: 1, prs: ["https://github.com/o/r/pull/1"] },
     ]);
     expect(v).toMatchObject({ sessions: 2, activeMs: 90_000, costUsd: 2, costIsEstimate: true, commits: 4, prs: 1, rated: 1, shipped: 1 });
+  });
+});
+
+const DAY = 86_400_000;
+const pulse = (over: Partial<Pulse> = {}): Pulse => ({ total: 4, proven: 0, committed: 0, word: 0, stuck: 0, inProgress: 0, notStarted: 4, waitHours: 0, waitHoursPrev: 0, costWeek: 0, mine: true, needs: [], ...over });
+
+describe("the list of all workstreams", () => {
+  const now = 100 * DAY;
+  it("groups by what needs you, then done, stalled or moving", () => {
+    const need = { title: "Approve", sessionId: null, since: now, frees: 1 };
+    expect(wsGroup(ws({ lastActivity: now, pulse: pulse({ needs: [need] }) }), now)).toBe("need");
+    expect(wsGroup(ws({ lastActivity: now, counts: { ...ws({}).counts, done: 3 } }), now)).toBe("done");
+    expect(wsGroup(ws({ lastActivity: now, closed: true, counts: { ...ws({}).counts, pending: 2 } }), now)).toBe("done");
+    expect(wsGroup(ws({ lastActivity: now - 4 * DAY, counts: { ...ws({}).counts, pending: 2 } }), now)).toBe("stalled");
+    expect(wsGroup(ws({ lastActivity: now - DAY, counts: { ...ws({}).counts, pending: 2 } }), now)).toBe("moving");
+  });
+
+  it("ranks Act now by work freed times days waited, across workstreams", () => {
+    const a = ws({ key: "a", pulse: pulse({ needs: [{ title: "quick", sessionId: "s1", since: now - 0.3 * 3_600_000, frees: 6 }] }) });
+    const b = ws({ key: "b", pulse: pulse({ needs: [{ title: "old", sessionId: null, since: now - 2 * DAY, frees: 4 }, { title: "older", sessionId: null, since: now - 4 * DAY, frees: 2 }] }) });
+    expect(actNow([a, b], now).map((x) => x.need.title)).toEqual(["old", "older", "quick"]);
+  });
+
+  it("flags waiting only when it really changed", () => {
+    expect(waitTrend(pulse())).toBeNull();
+    expect(waitTrend(pulse({ waitHours: 10, waitHoursPrev: 9 }))).toBe("same");
+    expect(waitTrend(pulse({ waitHours: 20, waitHoursPrev: 10 }))).toBe("worse");
+    expect(waitTrend(pulse({ waitHours: 2, waitHoursPrev: 10 }))).toBe("better");
   });
 });

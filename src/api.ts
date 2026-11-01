@@ -758,6 +758,38 @@ export interface Workstream {
   updates: { at: number | null; sessionId: string; agent: string; taskKey: string | null; text: string }[];
   /** Progress counts: an imported epic's leaf items, else agents' tasks. */
   counts: { done: number; inProgress: number; needsYou: number; decisions: number; waiting: number; pending: number; agent: number; human: number };
+  /** Proof, waits, cost and what needs you; only in the list (pulse.rs). */
+  pulse?: Pulse;
+}
+
+/** A workstream at a glance, for the list of all of them; see pulse.rs. */
+export interface Pulse {
+  total: number;
+  /** Done with a merged PR, or a tracker item a person closed. */
+  proven: number;
+  /** Done with commits but no merged PR. */
+  committed: number;
+  /** Done on the agent's word only. */
+  word: number;
+  stuck: number;
+  inProgress: number;
+  notStarted: number;
+  /** Hours its agents waited on you in the last 7 days, and the 7 before. */
+  waitHours: number;
+  waitHoursPrev: number;
+  costWeek: number;
+  mine: boolean;
+  /** What needs you, most work freed first. */
+  needs: Need[];
+}
+
+export interface Need {
+  title: string;
+  /** The session to open, for an agent waiting on you. */
+  sessionId: string | null;
+  since: number;
+  /** Tasks it frees: itself and those waiting for it. */
+  frees: number;
 }
 
 /** A release you can move to; see updates.rs `list`. */

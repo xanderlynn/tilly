@@ -1,5 +1,5 @@
 // Pure helpers for the Workstreams page, kept apart so they can be tested.
-import type { Workstream, WsTask } from "./api";
+import type { Need, Pulse, Workstream, WsTask } from "./api";
 
 /** Shares of the progress bar: done, in progress, and waiting on you, from the counts. */
 export function progress(ws: Workstream) {
@@ -101,4 +101,37 @@ export function sortForYou(list: Workstream[]) {
       Number(b.counts.needsYou > 0) - Number(a.counts.needsYou > 0) ||
       b.lastActivity - a.lastActivity,
   );
+}
+
+/** Groups on the list of all workstreams, in order. */
+export type WsGroup = "need" | "moving" | "stalled" | "done";
+
+/** Open work quiet this long is stalled. */
+export const STALLED_LIST_DAYS = 3;
+
+export function wsGroup(ws: Workstream, now = Date.now()): WsGroup {
+  if ((ws.pulse?.needs.length ?? 0) > 0 || ws.counts.needsYou > 0) return "need";
+  const c = ws.counts;
+  const total = c.done + c.inProgress + c.pending;
+  if (ws.closed || ws.archived || (total > 0 && c.done === total)) return "done";
+  if (now - ws.lastActivity >= STALLED_LIST_DAYS * 86_400_000) return "stalled";
+  return "moving";
+}
+
+/** How Act now ranks: work freed × (1 + days waited), as in pulse.rs. */
+export const needScore = (n: Need, now = Date.now()) => n.frees * (1 + Math.max(0, now - n.since) / 86_400_000);
+
+/** Everything that needs you across these workstreams, most urgent first. */
+export function actNow(list: Workstream[], now = Date.now()): { ws: Workstream; need: Need }[] {
+  return list
+    .flatMap((ws) => (ws.pulse?.needs ?? []).map((need) => ({ ws, need })))
+    .sort((a, b) => needScore(b.need, now) - needScore(a.need, now));
+}
+
+/** A change in waiting worth flagging: at least 3 hours and a fifth. */
+export function waitTrend(p: Pulse): "worse" | "better" | "same" | null {
+  if (!p.waitHours && !p.waitHoursPrev) return null;
+  const d = p.waitHours - p.waitHoursPrev;
+  if (Math.abs(d) < 3 || Math.abs(d) < 0.2 * Math.max(p.waitHoursPrev, 1)) return "same";
+  return d > 0 ? "worse" : "better";
 }
