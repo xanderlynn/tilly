@@ -783,6 +783,39 @@ export interface Pulse {
   needs: Need[];
 }
 
+/** One workstream's every task, for the Wall; see wall.rs. */
+export interface Wall {
+  key: string;
+  title: string;
+  rowsAre: "feature" | "session";
+  rows: WallRow[];
+  needs: Need[];
+  lost: { waitingOnYou: number; waitingOnOthers: number; stuck: number; inReview: number };
+  delays: { item: string; row: string; cause: "you" | "others" | "stuck" | "review"; hours: number }[];
+}
+
+export interface WallRow {
+  key: string;
+  title: string;
+  waitsOn: string[];
+  cells: WallCell[];
+  items: { key: string; title: string }[];
+}
+
+export type CellState = "merged" | "committed" | "confirmed" | "word" | "working" | "you" | "others" | "stuck" | "todo";
+
+export interface WallCell {
+  key: string;
+  title: string;
+  human: boolean;
+  phase: "build" | "review" | "release";
+  state: CellState;
+  mine: boolean;
+  item: string;
+  /** Hours in its current waiting state, when known; 0 otherwise. */
+  ageHours: number;
+}
+
 export interface Need {
   title: string;
   /** The session to open, for an agent waiting on you. */
@@ -1011,6 +1044,7 @@ export const api = {
   /** Cards only: no task tree, just the latest update. */
   workstreams: (days: number) => call<Workstream[]>("list_workstreams", { days }),
   workstream: (key: string, days: number) => call<Workstream>("get_workstream", { key, days }),
+  wall: (key: string, days: number) => call<Wall>("get_wall", { key, days }),
   setTaskKind: (taskKey: string, kind: TaskKind | null) => call<void>("set_task_kind", { taskKey, kind }),
   createWorkstream: (title: string, sessions: string[]) => call<string>("create_workstream", { title, sessions }),
   renameWorkstream: (key: string, title: string) => call<void>("rename_workstream", { key, title }),

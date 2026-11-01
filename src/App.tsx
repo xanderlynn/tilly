@@ -71,7 +71,7 @@ const RENAMED: Record<string, Page> = { live: "now", today: "now", control: "now
 
 
 /** Queries that show live state and refetch as soon as data changes. */
-const LIVE_QUERIES = new Set(["teams", "session", "workstreams", "workstream", "river"]);
+const LIVE_QUERIES = new Set(["teams", "session", "workstreams", "workstream", "river", "wall"]);
 
 function readStored<T>(key: string, fallback: T): T {
   try {
@@ -145,7 +145,7 @@ export default function App() {
       qc.invalidateQueries({ predicate: (q) => !LIVE_QUERIES.has(String(q.queryKey[0])) && q.queryKey[0] !== "releases", refetchType: "none" });
     });
     // Imported workstreams synced from their tracker in the background.
-    const unWs = listen("workstreams-changed", () => qc.invalidateQueries({ predicate: (q) => q.queryKey[0] === "workstreams" || q.queryKey[0] === "workstream" }));
+    const unWs = listen("workstreams-changed", () => qc.invalidateQueries({ predicate: (q) => ["workstreams", "workstream", "wall"].includes(String(q.queryKey[0])) }));
     // A session picked in the tray or from a notification; one picked before
     // this window existed is waiting to be taken.
     const unOpen = listen<string>("open-session", (e) => {

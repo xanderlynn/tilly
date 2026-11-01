@@ -26,6 +26,7 @@ import { StatusBadge } from "../components/status";
 import { Button, Card, Empty, ErrorNote, Loading, PageHeader, Segmented, SourceBadge, cx, inputClass, inputBase } from "../components/ui";
 import { ago, compact, duration, money, projectName, roleOf } from "../format";
 import { WorkstreamsOverview } from "../components/WorkstreamsOverview";
+import { WallView } from "../components/WallView";
 import { importedLabel, wsGroup, initials, progress, value, sortForYou, taskState, trackerName, trackerTasks, tree, type TaskState } from "../workstreams";
 
 const STATE: Record<TaskState, { icon: LucideIcon; className: string; label: string }> = {
@@ -42,7 +43,7 @@ const SYNC_AFTER_MS = 15 * 60_000;
 /** A change to your workstreams; the list reloads after it. */
 function useWsChange<A>(fn: (arg: A) => Promise<unknown>) {
   const qc = useQueryClient();
-  return useMutation({ mutationFn: fn, onSuccess: () => qc.invalidateQueries({ predicate: (q) => q.queryKey[0] === "workstreams" || q.queryKey[0] === "workstream" }) });
+  return useMutation({ mutationFn: fn, onSuccess: () => qc.invalidateQueries({ predicate: (q) => ["workstreams", "workstream", "wall"].includes(String(q.queryKey[0])) }) });
 }
 
 const agentLabel = (a: { name: string | null; role: string }) => a.name ?? (a.role === "lead" ? "Lead" : roleOf(a.role)[0]);
@@ -86,7 +87,7 @@ export default function Workstreams({ onOpen }: { onOpen: (id: string) => void }
   const create = useWsChange(({ title, ids }: { title: string; ids: string[] }) => api.createWorkstream(title, ids));
   const star = useWsChange((ws: Workstream) => api.starWorkstream(ws, !ws.starred));
 
-  if (open && full.data) return <Detail ws={full.data} onBack={() => setOpen(null)} onOpen={onOpen} />;
+  if (open && full.data) return <Detail ws={full.data} days={days} onBack={() => setOpen(null)} onOpen={onOpen} />;
   if (open && full.isLoading) return <Loading />;
 
   const counts = { need: 0, moving: 0, stalled: 0, done: 0 };
@@ -229,7 +230,12 @@ function StarButton({ ws, className }: { ws: Workstream; className?: string }) {
   );
 }
 
-function Detail({ ws, onBack, onOpen }: { ws: Workstream; onBack: () => void; onOpen: (id: string) => void }) {
+/** A workstream with at least this many tasks opens on the Wall. */
+const WALL_FROM = 40;
+
+function Detail({ ws, days, onBack, onOpen }: { ws: Workstream; days: number; onBack: () => void; onOpen: (id: string) => void }) {
+  const taskCount = ws.counts.done + ws.counts.inProgress + ws.counts.pending;
+  const [view, setView] = useState<"wall" | "tasks">(taskCount >= WALL_FROM ? "wall" : "tasks");
   const [sel, setSel] = useState<string | null>(ws.tasks.find((t) => t.status === "in_progress")?.key ?? null);
   const [adding, setAdding] = useState(false);
   const [sharing, setSharing] = useState(false);
@@ -355,7 +361,18 @@ function Detail({ ws, onBack, onOpen }: { ws: Workstream; onBack: () => void; on
         />
       )}
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
+      <div className="mb-3">
+        <Segmented
+          options={[
+            { value: "wall" as const, label: "Wall" },
+            { value: "tasks" as const, label: "Tasks" },
+          ]}
+          value={view}
+          onChange={setView}
+        />
+      </div>
+      {view === "wall" && <WallView wsKey={ws.key} days={days} onOpenSession={onOpen} />}
+      <div className={cx("grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]", view === "wall" && "hidden")}>
         <Card title="Tasks">
           <div className="space-y-4" role="tree" aria-label="Tasks by session">
             {items.length > 0 && (
@@ -471,7 +488,7 @@ function TaskDetail({ t, titleOf, ws, onOpen }: { t: WsTask; titleOf: (key: stri
   const qc = useQueryClient();
   const set = useMutation({
     mutationFn: (kind: TaskKind | null) => api.setTaskKind(t.key, kind),
-    onSuccess: () => qc.invalidateQueries({ predicate: (q) => q.queryKey[0] === "workstreams" || q.queryKey[0] === "workstream" }),
+    onSuccess: () => qc.invalidateQueries({ predicate: (q) => ["workstreams", "workstream", "wall"].includes(String(q.queryKey[0])) }),
   });
   const label = useMutation({ mutationFn: (kind: TaskKind) => api.labelItem(t.key, kind) });
   const st = STATE[taskState(t)];
