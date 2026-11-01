@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { api, type Source } from "../api";
 import type { Drill, Page } from "../App";
-import { Card, Empty, ErrorNote, GroupTable, Legend, Loading, PageHeader, RANGE_OPTIONS, Segmented, SourceBadge, Stat } from "../components/ui";
+import { Card, Empty, ErrorNote, GroupTable, Legend, Loading, PageHeader, RANGE_OPTIONS, SectionHeader, Segmented, SourceBadge, Stat } from "../components/ui";
 import { InsightItem } from "../components/InsightItem";
 import { chart } from "../theme";
 import { SOURCE_COLOR, compact, delta, duration, hours, money, pct, projectName, sourceLabel } from "../format";
@@ -24,19 +24,24 @@ export default function Overview({
   onOpen,
   go,
   drill,
+  section,
 }: {
   days: number;
   setDays: (d: number) => void;
   onOpen: (id: string) => void;
   go: (p: Page) => void;
   drill: (d: Drill) => void;
+  /** Shown as a section of the Outcomes page, which has the range control. */
+  section?: boolean;
 }) {
   const ov = useQuery({ queryKey: ["overview", days], queryFn: () => api.overview(days) });
   const ins = useQuery({ queryKey: ["insights", days], queryFn: () => api.insights(days) });
   const unrated = useQuery({ queryKey: ["sessions", { days, outcome: "unrated" }], queryFn: () => api.sessions({ days, outcome: "unrated" }) });
   const failures = useQuery({ queryKey: ["failures", days], queryFn: () => api.failureClusters(days) });
 
-  const header = (
+  const header = section ? (
+    <SectionHeader title="Summary" subtitle="How your AI-assisted work is going, and where to improve." />
+  ) : (
     <PageHeader
       title="Overview"
       subtitle="How your AI-assisted work is going, and where to improve."

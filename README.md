@@ -19,9 +19,11 @@ Everything stays on your computer. Tilly runs on macOS and Windows, and is built
 
 *All screenshots use made-up demo data ([`scripts/demo-data.mjs`](scripts/demo-data.mjs)), not anyone's real sessions.*
 
-### Agents: what needs you, right now
+### Now: what needs you, right now
 
-The **Control center** is where Tilly opens. Each session gets one status, worked out from its log (table below). The *Awaiting you* queue puts the longest wait first and shows what the agent asked or is stuck on. Above it: how many agents are working, how long they have waited on you today, and your reply time.
+**Now** is where Tilly opens. One sentence says where things stand ("Three agents are working. Two need you."). Below it, **Today** is a river of your workstreams: one lane each, with bars while agents work, hatched amber where they waited on you, an amber gate on any that is waiting on you this minute, and a dashed box for the next step only you can do. Beside it, **Needs you** lists up to five things, most urgent first: agents waiting on you, your own next steps, and outcomes to confirm. Open one for a big **Focus** card: Enter goes to the agent, L pushes it back half an hour, D says you handled it, arrows move to the next. When you come back after a while, **Since you left** comes first. Cards for what changed this week appear only when a number really moved.
+
+**Live agents**, next to it, is the full board. Each session gets one status, worked out from its log (table below). The *Awaiting you* queue puts the longest wait first and shows what the agent asked or is stuck on. Above it: how many agents are working, how long they have waited on you today, and your reply time.
 
 | Status | Means |
 | --- | --- |
@@ -34,7 +36,7 @@ The **Control center** is where Tilly opens. Each session gets one status, worke
 | **Completed** / **Closed** | Finished its turn without asking you anything, or the tool closed the session. |
 | **Idle** | No activity for 30 minutes: stalled, or the tool was closed. |
 
-Sessions stay in the live view for three hours after their last turn, and one waiting on you (a question or a permission prompt) stays for a day, so a question asked overnight is still there in the morning. The sidebar's **Agents** badge counts the ones awaiting you, and the menu-bar (tray) menu lists them, each a click away. Notifications say what the agent wants and remind you a few times, every 15 minutes, while it's still waiting; clicking one opens that session. **Today** opens with what finished, failed or started waiting while you were away. Sessions are labelled by the app that ran them: Claude Code, the Claude app, Copilot CLI, the Copilot app or Copilot in VS Code. **Go to agent** brings forward where a session runs so you can answer it: the Claude or Copilot app, VS Code on its folder, or a command-line agent's own Terminal or iTerm tab.
+Sessions stay in the live view for three hours after their last turn, and one waiting on you (a question or a permission prompt) stays for a day, so a question asked overnight is still there in the morning. The sidebar's **Now** badge counts the ones awaiting you, and the menu-bar (tray) menu lists them, each a click away. Notifications say what the agent wants and remind you a few times, every 15 minutes, while it's still waiting; clicking one opens that session. **Now** opens with what finished, failed or started waiting while you were away. Sessions are labelled by the app that ran them: Claude Code, the Claude app, Copilot CLI, the Copilot app or Copilot in VS Code. **Go to agent** brings forward where a session runs so you can answer it: the Claude or Copilot app, VS Code on its folder, or a command-line agent's own Terminal or iTerm tab.
 
 A session that has waited on you for over three hours is **Parked**: folded away, out of the badge and the tray, until you open it. **Dismiss** clears one you've already dealt with somewhere else.
 
@@ -56,17 +58,15 @@ The list opens on **Active** workstreams (touched in the last three days, or nee
 
 ![Teams: three sub-agents at work on a payments migration, and recent sessions with their teams](docs/screenshots/teams.png)
 
-### Today and Sessions: review in one tap
+### Sessions: review in one tap
 
-**Today** lists what finished recently so you can rate each one (shipped, partial, abandoned, redo) in a click. Ratings are what turn activity into insight. **Sessions** holds every session from every tool, searchable across all your prompts; open one to see its timeline, its team, and the commits it produced.
+When a session finishes, a small card asks how it went (shipped, partial, abandoned, redo), and **Now** offers to confirm the ones whose pull request merged in one click. Ratings are what turn activity into insight. **Sessions** holds every session from every tool, searchable across all your prompts; open one to see its timeline, its team, and the commits it produced.
 
-| Today | Sessions |
-| --- | --- |
-| ![Today: sessions to rate, experiments and goals](docs/screenshots/today.png) | ![Sessions: every session with project, branch, time, cost and outcome](docs/screenshots/sessions.png) |
+![Sessions: every session with project, branch, time, cost and outcome](docs/screenshots/sessions.png)
 
 ### Outcomes and Habits: what actually works for you
 
-**Outcomes** shows how often sessions ship, with your usual range so a good or bad week stands out, and insights you can click through to the sessions behind them. **Habits** shows when you work, what you delegate and how it goes, and how the agent spends its time. **Toolkit** lists the agent roles, tools, MCP servers and skills you use, and compares how sessions went with each one against sessions without it.
+**Outcomes** is one page: how often sessions ship, with your usual range so a good or bad week stands out, and insights you can click through to the sessions behind them. **Habits** shows when you work, what you delegate and how it goes, and how the agent spends its time. **Toolkit** lists the agent roles, tools, MCP servers and skills you use, and compares how sessions went with each one against sessions without it.
 
 | Outcomes | Patterns |
 | --- | --- |
@@ -74,7 +74,7 @@ The list opens on **Active** workstreams (touched in the last three days, or nee
 
 ![Toolkit: agent roles used per week, and success with and without each one](docs/screenshots/toolkit.png)
 
-**Progress** answers "did I get better?": success, cost per shipped, reply time and waiting month by month, with one line on the trend, and what pays off by team size, app and kind of work. On Habits, **Your attention** splits agents' waiting on you into replying and away spells, by hour and by project. A session whose pull request merged suggests Shipped, and Today confirms suggestions in one click.
+Its **Progress** section answers "did I get better?": success, cost per shipped, reply time and waiting month by month, with one line on the trend, and what pays off by team size, app and kind of work. On Habits, **Your attention** splits agents' waiting on you into replying and away spells, by hour and by project. A session whose pull request merged suggests Shipped, and Now confirms suggestions in one click.
 
 ### Usage: tokens and spend
 
@@ -88,6 +88,8 @@ A **weekly retro** starts with your own reflection, then Claude reviews the meas
 
 ### Make it yours
 
+**Settings › Features** decides what you see. Now, Live agents, Sessions and Settings are always there; Workstreams, GitHub and Azure DevOps syncing, Outcomes and Usage are on by default; Teams, Patterns, Execution, Toolkit, Journal, Playbooks, the weekly retro and experiments are off until you want them. Pick a set (Essentials, Learning, Many streams or Everything) or switch each one. A feature that's off has no tab and does no background work. **Settings › Motion** sets how much moves: Calm (the default) pulses only what needs you, Full adds flowing bars and growing numbers, Off is still, and **Presenting** stills everything while you share your screen.
+
 Pick a sound (a built-in tone or your own WAV or Ogg file), an image and a volume for each status, with quiet hours, mute and background-only alerts. Themes, accents and density are in Settings too.
 
 ![Settings: themes and the status sounds and images table](docs/screenshots/settings.png)
@@ -99,7 +101,7 @@ Press ⌘K (Ctrl+K on Windows) anywhere to jump to a page or search every prompt
 ## Your first week
 
 1. **Leave it running.** Let it tell you when an agent needs you, and pick which statuses make a sound in Settings.
-2. **Rate sessions as they finish.** **Today** lists them; one click each: shipped, partial, abandoned or redo. Ratings power the insights; 10 to 20 are enough to start seeing patterns.
+2. **Rate sessions as they finish.** A card asks when each one ends, and **Now** confirms the ones whose PR merged; one click each: shipped, partial, abandoned or redo. Ratings power the insights; 10 to 20 are enough to start seeing patterns.
 3. **Look at Outcomes after a week:** your success rate, and which kinds of task you delegate well.
 4. **Try one experiment.** Pick one habit, say "ask for a plan before code on multi-file changes", and let **Improve** measure it against your baseline.
 
@@ -143,7 +145,7 @@ Tilly lives in the menu bar (macOS) or the system tray (Windows). Closing the wi
 
 ## FAQ
 
-**The Control center is empty.** It shows sessions active in the last three hours. Start a Claude Code or Copilot session and it appears within seconds. If your history is missing too, check **Settings → Data sources**, and whether you set `CLAUDE_CONFIG_DIR` or `COPILOT_HOME`.
+**Live agents is empty.** It shows sessions active in the last three hours. Start a Claude Code or Copilot session and it appears within seconds. If your history is missing too, check **Settings → Data sources**, and whether you set `CLAUDE_CONFIG_DIR` or `COPILOT_HOME`.
 
 **A session says "Might need approval" but it's fine.** Claude Code doesn't log permission prompts, so Tilly guesses from a file, web or MCP tool call with no result for 45 seconds. Long-running commands and sub-agents are excluded, and the status clears as soon as the tool returns.
 

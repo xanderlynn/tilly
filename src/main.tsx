@@ -4,8 +4,10 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import App from "./App";
 import "./index.css";
 import { applyAppearance, loadAppearance } from "./theme";
+import { applyMotion } from "./motion";
 
 applyAppearance(loadAppearance());
+applyMotion();
 
 const queryClient = new QueryClient({
   defaultOptions: {

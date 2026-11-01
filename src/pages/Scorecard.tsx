@@ -1,15 +1,17 @@
 import { useQuery } from "@tanstack/react-query";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { api, type Source } from "../api";
-import { Card, Empty, ErrorNote, GroupTable, Legend, Loading, PageHeader, RANGE_OPTIONS, Segmented, SourceBadge, Stat } from "../components/ui";
+import { Card, Empty, ErrorNote, GroupTable, Legend, Loading, PageHeader, RANGE_OPTIONS, SectionHeader, Segmented, SourceBadge, Stat } from "../components/ui";
 import { compact, duration, money, pct, projectName } from "../format";
 import type { Drill } from "../App";
 import { FitMatrix, RealityCheck } from "../components/Reality";
 import { chart } from "../theme";
 
-export default function Scorecard({ days, setDays, drill }: { days: number; setDays: (d: number) => void; drill: (d: Drill) => void }) {
+export default function Scorecard({ days, setDays, drill, section }: { days: number; setDays: (d: number) => void; drill: (d: Drill) => void; section?: boolean }) {
   const q = useQuery({ queryKey: ["scorecard", days], queryFn: () => api.scorecard(days) });
-  const header = (
+  const header = section ? (
+    <SectionHeader title="Delivery and reality" subtitle="Output, not activity: how often a session turns into commits, and what each commit costs." />
+  ) : (
     <PageHeader
       title="Scorecard"
       subtitle="Output, not activity: how often a session turns into commits, and what each commit costs."

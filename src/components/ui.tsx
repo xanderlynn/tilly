@@ -21,6 +21,16 @@ export function PageHeader({ title, subtitle, actions }: { title: string; subtit
   );
 }
 
+/** A section's heading inside a page made of several (Outcomes). */
+export function SectionHeader({ title, subtitle }: { title: string; subtitle?: ReactNode }) {
+  return (
+    <div className="mb-4 mt-10 border-t border-zinc-800/80 pt-6 first:mt-0 first:border-0 first:pt-0">
+      <h2 className="text-lg font-semibold tracking-tight text-zinc-50">{title}</h2>
+      {subtitle && <p className="mt-1 text-sm text-zinc-400">{subtitle}</p>}
+    </div>
+  );
+}
+
 export function Card({ children, className, title, action }: { children: ReactNode; className?: string; title?: ReactNode; action?: ReactNode }) {
   return (
     <section className={cx("rounded-xl border border-zinc-800/80 bg-zinc-900/60 p-4", className)}>

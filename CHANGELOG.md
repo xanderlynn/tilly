@@ -8,6 +8,23 @@ To add to the next release, write under **Unreleased**; `npm run release -- <ver
 
 ## [Unreleased]
 
+### Added
+
+- **Now**, the new home page: one sentence on where things stand, today as a river of your workstreams (agents working, waits on you, gates waiting now, your next step), and **Needs you**: up to five things, most urgent first, then "+N more". **Since you left** comes first after a break.
+- **Focus**: open anything on Needs you for one big card. Enter goes to the agent, L pushes it back half an hour, D says you handled it, arrows move through the rest.
+- **What changed** cards: this week against last, shown only when a number really moved (shipped, wait for your replies, cost per shipped session, success when it's more than chance).
+- **Settings › Features**: switch parts of Tilly on or off, or pick a set (Essentials, Learning, Many streams, Everything). Off means no tab and no background work; turning off GitHub and Azure DevOps stops tracker syncing and pull request checks.
+- **Settings › Motion**: Calm (default), Full or Off, and a Presenting switch that stills everything while you share your screen. The computer's reduce-motion setting always wins.
+
+### Changed
+
+- **Today** and the control center's place as the home are replaced by **Now**; the control center stays as **Live agents**.
+- **Outcomes** is one page: Summary, Progress, and Delivery and reality as sections.
+- Insights, Worth a look and Unusual sessions are one **Worth a look** card on Now.
+- **Teams, Patterns, Execution, Toolkit, Journal, Playbooks, Weekly retro and Experiments** are off by default (Settings › Features turns them back on). A six-month trial with three kinds of users found each used about 5 of the 17 tabs.
+- Usage folds its cache and token charts away.
+
+
 ## [0.2.0] - 2026-10-30
 
 ### Added

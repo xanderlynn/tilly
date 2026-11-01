@@ -4,6 +4,7 @@
 //! on launch and when the window is focused. A failed fetch is kept on the
 //! workstream for its card to show, and tried again a full interval later.
 //! Each round also asks gh whether recent sessions' pull requests merged.
+//! Turning off the "trackers" feature (Settings › Features) stops both.
 
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::{self, RecvTimeoutError, Sender};
@@ -14,6 +15,9 @@ use tauri::{AppHandle, Emitter, Manager};
 use crate::{db, workstreams};
 
 pub const SETTING: &str = "workstreams.syncMinutes";
+/// The enabled features, a JSON list (src/features.ts); missing is the
+/// default set, which includes "trackers".
+pub const FEATURES_KEY: &str = "features.enabled";
 const DEFAULT_MINUTES: i64 = 15;
 /// How often to look for workstreams that are due.
 const TICK: Duration = Duration::from_secs(60);
@@ -80,7 +84,7 @@ fn round(app: &AppHandle, db_path: &Path) -> anyhow::Result<()> {
     let minutes = db::get_setting(&conn, SETTING)?
         .and_then(|v| v.trim().parse::<i64>().ok())
         .unwrap_or(DEFAULT_MINUTES);
-    if minutes <= 0 {
+    if minutes <= 0 || !trackers_on(&conn) {
         return Ok(());
     }
     // Pull requests sessions opened: merged or not decides the suggested outcome.
@@ -102,4 +106,14 @@ fn round(app: &AppHandle, db_path: &Path) -> anyhow::Result<()> {
         let _ = app.emit("workstreams-changed", ());
     }
     Ok(())
+}
+
+/// Whether the "trackers" feature is on.
+fn trackers_on(conn: &rusqlite::Connection) -> bool {
+    match db::get_setting(conn, FEATURES_KEY).ok().flatten() {
+        None => true,
+        Some(v) => serde_json::from_str::<Vec<String>>(&v)
+            .map(|list| list.iter().any(|f| f == "trackers"))
+            .unwrap_or(true),
+    }
 }
