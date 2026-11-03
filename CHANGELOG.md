@@ -8,6 +8,8 @@ To add to the next release, write under **Unreleased**; `npm run release -- <ver
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-03
+
 ### Added
 
 - **The Wall**, for big workstreams: every task on one screen, a row per feature (or per session), with **Build**, **Review** and **Release · decide** columns and agents' work above a dashed line, people's below. Each task is a small cell: done, needing a person, agent working, stuck or not started; **Detail** splits done into merged, committed, closed by a person and the agent's word. Lenses (Mine, Needs a person, People, Review, Stuck, Agent's word, Delays) fade the rest. Click a feature to see its stories and bugs. Above it: **Act now** for that workstream and **Where time is going**. Workstreams with 40 or more tasks open on the Wall; **Tasks** is a click away.
@@ -27,7 +29,6 @@ To add to the next release, write under **Unreleased**; `npm run release -- <ver
 - Insights, Worth a look and Unusual sessions are one **Worth a look** card on Now.
 - **Teams, Patterns, Execution, Toolkit, Journal, Playbooks, Weekly retro and Experiments** are off by default (Settings › Features turns them back on). A six-month trial with three kinds of users found each used about 5 of the 17 tabs.
 - Usage folds its cache and token charts away.
-
 
 ## [0.2.0] - 2026-10-30
 
@@ -148,7 +149,8 @@ The first release of Tilly: a desktop app that keeps your AI coding agents in li
 - Lean on resources: Tilly reads only the new lines of each log, pushes changes to the window instead of polling, and frees its window's memory when you close it. In the tray with agents busy, it uses under 1% of one CPU core and about 100 MB of memory.
 - Upgrading from Governess or Execution Ledger: your data and saved API key move over on first launch.
 
-[Unreleased]: https://github.com/xanderlynn/tilly/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/xanderlynn/tilly/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/xanderlynn/tilly/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/xanderlynn/tilly/compare/v0.1.2...v0.2.0
 [0.1.2]: https://github.com/xanderlynn/tilly/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/xanderlynn/tilly/compare/v0.1.0...v0.1.1
