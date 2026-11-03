@@ -8,6 +8,10 @@ To add to the next release, write under **Unreleased**; `npm run release -- <ver
 
 ## [Unreleased]
 
+### Changed
+
+- Releases are the Windows portable ZIP only, built and published by the release workflow without an updater key. There are no macOS builds or installers on releases for now; update by downloading the new ZIP.
+
 ## [0.3.0] - 2026-11-03
 
 ### Added
