@@ -150,6 +150,16 @@ pub fn get_timelines(state: State<AppState>, since: i64) -> CmdResult<Vec<trends
     with_db(&state, |c| trends::timelines(c, since))
 }
 
+/// One workstream's every task, by feature and phase, for the Wall.
+#[tauri::command(async)]
+pub fn get_wall(
+    state: State<AppState>,
+    key: String,
+    days: i64,
+) -> CmdResult<tilly_core::wall::Wall> {
+    with_db(&state, |c| tilly_core::wall::wall(c, &key, days))
+}
+
 /// Today as one lane per workstream, for the home page's River.
 #[tauri::command(async)]
 pub fn get_river(

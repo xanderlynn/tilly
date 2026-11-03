@@ -142,6 +142,7 @@ pub fn run() {
             commands::get_failure_clusters,
             commands::get_timelines,
             commands::get_river,
+            commands::get_wall,
             commands::get_fit,
             commands::get_tool_health,
             commands::get_patterns,
