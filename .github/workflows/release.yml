@@ -2,11 +2,11 @@ name: Release
 
 # Pushing a tag like v0.2.0 (see scripts/release.mjs) runs CodeQL on the
 # tagged code first; a serious finding stops the release. Then it builds the
-# macOS and Windows installers and portable archives into a draft GitHub
-# Release, and adds checksums and the version's notes from CHANGELOG.md.
-# Review the draft, then publish it. Builds are also signed for the in-app
-# updater (tauri.updater.conf.json, TAURI_SIGNING_PRIVATE_KEY): each release
-# carries a latest.json that the app installs from, for updates and rollbacks.
+# Windows portable ZIP into a draft GitHub Release, and adds checksums, the
+# SBOM and the version's notes from CHANGELOG.md. Review the draft, then
+# publish it. Releases are the portable ZIP only: no installers, no macOS
+# build and no signed in-app update files (latest.json), so no updater key
+# is needed. build.yml still builds installers on main for trying changes.
 on:
   push:
     tags: ["v*"]
@@ -27,28 +27,12 @@ jobs:
       security-events: write
 
   build:
-    name: ${{ matrix.name }}
+    name: Windows x64
     needs: codeql
     environment: release
     permissions:
       contents: write
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - name: macOS (Apple Silicon + Intel)
-            os: macos-latest
-            rust-targets: aarch64-apple-darwin,x86_64-apple-darwin
-            args: --target universal-apple-darwin
-            portable-platform: macos
-            portable-target: macos-universal
-          - name: Windows x64
-            os: windows-latest
-            rust-targets: x86_64-pc-windows-msvc
-            args: ""
-            portable-platform: windows
-            portable-target: windows-x64
-    runs-on: ${{ matrix.os }}
+    runs-on: windows-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -72,63 +56,28 @@ jobs:
       - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
         with:
           toolchain: stable
-          targets: ${{ matrix.rust-targets }}
+          targets: x86_64-pc-windows-msvc
 
       - uses: swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
         with:
           workspaces: src-tauri
-          key: release-${{ matrix.os }}
+          key: release-windows-latest
 
       - name: Install frontend dependencies
         run: npm ci
 
-      # macOS signing and notarization turn on when the Apple secrets exist;
-      # without them the app is built unsigned (Gatekeeper warns on first
-      # open). See README › Releases and signing.
-      - name: Enable macOS signing
-        if: runner.os == 'macOS'
-        env:
-          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-        shell: bash
-        run: |
-          if [ -z "$APPLE_CERTIFICATE" ]; then
-            echo "No Apple signing secrets: building unsigned."
-            exit 0
-          fi
-          {
-            echo "APPLE_CERTIFICATE=${{ secrets.APPLE_CERTIFICATE }}"
-            echo "APPLE_CERTIFICATE_PASSWORD=${{ secrets.APPLE_CERTIFICATE_PASSWORD }}"
-            echo "APPLE_SIGNING_IDENTITY=${{ secrets.APPLE_SIGNING_IDENTITY }}"
-            echo "APPLE_ID=${{ secrets.APPLE_ID }}"
-            echo "APPLE_PASSWORD=${{ secrets.APPLE_PASSWORD }}"
-            echo "APPLE_TEAM_ID=${{ secrets.APPLE_TEAM_ID }}"
-          } >> "$GITHUB_ENV"
+      # The app on its own, without installers: all the portable ZIP needs.
+      - name: Build Tilly.exe
+        run: npm run tauri build -- --no-bundle
 
-      - name: Build installers into the draft release
-        uses: tauri-apps/tauri-action@1deb371b0cd8bd54025b384f1cd735e725c4060f # v1.0.0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-        with:
-          args: ${{ matrix.args }} --config src-tauri/tauri.updater.conf.json
-          tagName: ${{ github.ref_name }}
-          releaseName: Tilly ${{ github.ref_name }}
-          releaseBody: Notes are added when every installer is built.
-          releaseDraft: true
-          prerelease: ${{ contains(github.ref_name, '-') }}
-
-      - name: Package and upload portable archive
+      - name: Package and upload the portable ZIP
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PORTABLE_PLATFORM: ${{ matrix.portable-platform }}
-          PORTABLE_TARGET: ${{ matrix.portable-target }}
         run: |
           version=${GITHUB_REF_NAME#v}
-          node scripts/package-portable.mjs --platform "$PORTABLE_PLATFORM" --version "$version"
-          archive="artifacts/Tilly_${version}_${PORTABLE_TARGET}-portable.zip"
-          gh release upload "$GITHUB_REF_NAME" "$archive" --clobber
+          node scripts/package-portable.mjs --platform windows --version "$version"
+          gh release upload "$GITHUB_REF_NAME" "artifacts/Tilly_${version}_windows-x64-portable.zip" --clobber
 
   finish:
     name: Checksums and notes
@@ -157,7 +106,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           cd assets
-          gh release download "$GITHUB_REF_NAME" --pattern '*.dmg' --pattern '*.msi' --pattern '*.exe' --pattern '*.zip' --pattern '*.tar.gz' --pattern '*.sig' --pattern 'latest.json'
+          gh release download "$GITHUB_REF_NAME" --pattern '*.zip'
           sha256sum -- * > SHA256SUMS.txt
           cat SHA256SUMS.txt
 
@@ -165,13 +114,7 @@ jobs:
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
           subject-path: |
-            assets/*.dmg
-            assets/*.msi
-            assets/*.exe
             assets/*.zip
-            assets/*.tar.gz
-            assets/*.sig
-            assets/latest.json
             assets/tilly-sbom.cdx.json
             assets/tilly-licenses.md
             assets/SHA256SUMS.txt
@@ -197,14 +140,15 @@ jobs:
             echo ""
             echo "| Platform | File |"
             echo "| --- | --- |"
-            echo "| macOS 11 or later (Apple Silicon and Intel) | \`Tilly_${version}_universal.dmg\` or \`Tilly_${version}_macos-universal-portable.zip\` |"
-            echo "| Windows 10 and 11 (x64) | \`Tilly_${version}_x64-setup.exe\`, the \`.msi\` for managed installs, or \`Tilly_${version}_windows-x64-portable.zip\` |"
+            echo "| Windows 10 and 11 (x64) | \`Tilly_${version}_windows-x64-portable.zip\` |"
             echo ""
-            echo "Already using Tilly? Settings › Updates installs this version, or rolls back to an earlier one."
+            echo "Unzip it anywhere and run \`Tilly.exe\`. It needs no administrator rights and keeps its data in \`%APPDATA%\\com.xanderlynn.tilly\`, so your data carries over from earlier versions. It needs Microsoft's WebView2 runtime, which Windows 11 and up-to-date Windows 10 already have."
             echo ""
-            echo "Check a download against \`SHA256SUMS.txt\` with \`shasum -a 256 <file>\` (macOS) or \`Get-FileHash <file>\` (Windows)."
+            echo "The build isn't code-signed, so Windows SmartScreen shows \"Windows protected your PC\" on first run: choose **More info › Run anyway**, or unblock the ZIP first (Properties › Unblock, or \`Unblock-File\` in PowerShell). Settings › Updates can't install it; download the ZIP instead."
             echo ""
-            echo "Every component that ships in Tilly, with its license, is listed in \`tilly-licenses.md\` and in the CycloneDX SBOM \`tilly-sbom.cdx.json\`."
+            echo "Check the download with \`Get-FileHash Tilly_${version}_windows-x64-portable.zip\` against \`SHA256SUMS.txt\`. It was built by GitHub Actions from the tagged commit ([build run]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID)), with a signed build provenance attestation."
+            echo ""
+            echo "Every component that ships in Tilly, with its license, is listed in \`tilly-licenses.md\` and in the CycloneDX SBOM \`tilly-sbom.cdx.json\`. For what Tilly sends over the network and how to turn each part off, see [SECURITY.md]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/blob/$GITHUB_REF_NAME/SECURITY.md#for-it-and-security-teams)."
             if [ -n "$prev" ]; then
               echo ""
               echo "**Full changelog:** https://github.com/$GITHUB_REPOSITORY/compare/$prev...$GITHUB_REF_NAME"
